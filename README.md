@@ -1,1 +1,7 @@
 # PROYECTO-DE-DESARROLLO-DE-APLICACIONES-CON-MACHINE-LEARNING
+
+Frontend
+npm run dev
+
+Backend
+node server.js
