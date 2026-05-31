@@ -1,24 +1,27 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: 'gmail', 
   auth: {
-    user: process.env.EMAIL_USER || 'TU_CORREO_GMAIL@gmail.com',
-    pass: process.env.EMAIL_PASS || 'TU_CONTRASEÑA_DE_APLICACION' 
+    user: process.env.EMAIL_USER, // darkkrisalix616@gmail.com
+    pass: process.env.EMAIL_PASS  // bzwxzvccejmcowxd
   }
 });
 
-const enviarCorreoEstado = (correo, paciente, estado, detalles = '') => {
+// Función para enviar el correo
+const enviarCorreoEstado = (correoPaciente, nombrePaciente, estado, detalles) => {
   const mailOptions = {
-    from: `Sistema de Citas Médicas <${process.env.EMAIL_USER || 'TU_CORREO_GMAIL@gmail.com'}>`,
-    to: correo,
-    subject: `Actualización de tu Cita Médica: Estado ${estado}`,
-    text: `Hola ${paciente},\n\nTu cita médica ha cambiado de estado a: ¡${estado}!\n${detalles}\n\nGracias por confiar en nosotros.`
+    from: process.env.EMAIL_USER,
+    to: correoPaciente,
+    subject: `Estado de tu Cita Médica: ${estado}`,
+    text: `Hola ${nombrePaciente},\n\nTu cita ha cambiado a estado: ${estado}.\n\n${detalles}\n\nSaludos,\nSistema de Citas Médicas.`
   };
 
   transporter.sendMail(mailOptions, (error, info) => {
-    if (error) console.log('❌ Error al enviar correo:', error);
-    else console.log('📧 Correo enviado con éxito a:', correo);
+    if (error) {
+      return console.log('❌ Error al enviar correo:', error);
+    }
+    console.log('📧 Correo enviado exitosamente:', info.response);
   });
 };
 

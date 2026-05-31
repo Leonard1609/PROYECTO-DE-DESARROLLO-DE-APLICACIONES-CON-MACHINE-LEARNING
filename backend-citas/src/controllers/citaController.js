@@ -43,7 +43,12 @@ exports.actualizarCita = async (req, res) => {
       detallesCorreo = `Lamentablemente tu cita no pudo ser procesada. Por favor contacta al hospital.`;
     }
 
-    const citaActualizada = await Cita.findByIdAndUpdate(id, actualizaciones, { new: true });
+    // CÓDIGO CORREGIDO
+    const citaActualizada = await Cita.findByIdAndUpdate(
+    id, 
+    { estado, fecha, hora, motivo_reprogramacion }, 
+    { returnDocument: 'after' } //  Opción moderna recomendada por Mongoose
+    );
 
     if (!citaActualizada) {
       return res.status(404).json({ success: false, mensaje: 'Cita no encontrada' });
