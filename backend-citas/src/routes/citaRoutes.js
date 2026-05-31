@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const citaController = require('../controllers/citaController');
+const { verificarToken } = require('../middlewares/authMiddleware'); // ✨ Importamos el middleware
 
-// Ruta para el Móvil
-router.post('/citas', citaController.crearCita);
+// Rutas existentes
+router.post('/', citaController.crearCita);
+router.get('/', citaController.obtenerCitas);
 
-// Rutas para la Web
-router.get('/citas', citaController.obtenerCitas);
-router.put('/citas/:id', citaController.actualizarCita);
+// 🔒 Ruta Protegida: Ahora requiere que se envíe el Token JWT desde React para poder auditarse
+router.put('/:id', verificarToken, citaController.actualizarCita);
 
 module.exports = router;

@@ -1,14 +1,11 @@
 const Cita = require('../models/Cita');
-const { enviarCorreoEstado } = require('../config/mailer');
-const { evaluarRiesgoCita } = require('../config/mlEngine'); // ✨ Importamos el motor de ML
-
-const Cita = require('../models/Cita');
+const Auditoria = require('../models/Auditoria'); // ✨ Nuevo Import
 const { enviarCorreoEstado } = require('../config/mailer');
 const { 
   evaluarRiesgoCita, 
   predecirProbabilidadReingreso, 
   estimarCostoAtencion 
-} = require('../config/mlEngine'); // ✨ Importamos los 3 modelos analíticos
+} = require('../config/mlEngine'); // ✨ Importación única y limpia de los 3 modelos analíticos
 
 exports.crearCita = async (req, res) => {
   try {
@@ -52,33 +49,34 @@ exports.actualizarCita = async (req, res) => {
   const { estado, fecha, hora, motivo_reprogramacion } = req.body;
 
   try {
-    let actualizaciones = { estado };
-    let detallesCorreo = '';
-
-    if (estado === 'Reprogramada') {
-      actualizaciones.fecha = fecha;
-      actualizaciones.hora = hora;
-      actualizaciones.motivo_reprogramacion = motivo_reprogramacion;
-      detallesCorreo = `Nueva fecha: ${fecha} a las ${hora}.\nMotivo: ${motivo_reprogramacion}`;
-    } else if (estado === 'Aceptada') {
-      detallesCorreo = `Tu cita está confirmada para el día programado.`;
-    } else if (estado === 'Rechazada') {
-      detallesCorreo = `Lamentablemente tu cita no pudo ser procesada. Por favor contacta al hospital.`;
-    }
-
-    // CÓDIGO CORREGIDO (Mongoose moderno)
     const citaActualizada = await Cita.findByIdAndUpdate(
-      id, 
-      { estado, fecha, hora, motivo_reprogramacion }, 
-      { returnDocument: 'after' } 
+      id,
+      { estado, fecha, hora, motivo_reprogramacion },
+      { returnDocument: 'after' }
     );
 
     if (!citaActualizada) {
-      return res.status(404).json({ success: false, mensaje: 'Cita no encontrada' });
+      return res.status(404).json({ success: false, mensaje: 'Cita no encontrada.' });
     }
 
-    enviarCorreoEstado(citaActualizada.correo_paciente, citaActualizada.paciente, estado, detallesCorreo);
-    res.json({ success: true, mensaje: `Cita actualizada a ${estado}`, cita: citaActualizada });
+    // 🛡️ REGISTRO AUTOMÁTICO EN EL PANEL DE AUDITORÍA
+    // Nota: req.usuario vendrá del middleware que creamos en el Paso 2
+    if (req.usuario) {
+      const nuevaBitacora = new Auditoria({
+        usuarioId: req.usuario._id,
+        usuarioNombre: req.usuario.nombre,
+        rol: req.usuario.rol,
+        accion: `MODIFICAR_ESTADO_${estado.toUpperCase()}`,
+        descripcion: `El usuario modificó la cita del paciente ${citaActualizada.paciente} al estado: ${estado}.`,
+        ipAddress: req.ip || req.connection.remoteAddress
+      });
+      await nuevaBitacora.save();
+    }
+
+    // Tu lógica existente para enviar el correo con Nodemailer
+    await enviarCorreoEstado(citaActualizada.correo_paciente, citaActualizada.paciente, estado);
+
+    res.json({ success: true, cita: citaActualizada });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }

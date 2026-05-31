@@ -1,7 +1,17 @@
 require('dotenv').config();
 const app = require('./src/app');
 const conectarDB = require('./src/config/db');
+// En tu server.js añade la importación y el uso de las rutas:
+const authRoutes = require('./src/routes/authRoutes');
+const citaRoutes = require('./src/routes/citaRoutes');
+const auditoriaRoutes = require('./src/routes/auditoriaRoutes'); // ✨ Nueva Importación
+// ... debajo de app.use('/api/citas', citaRoutes);
+app.use('/api/auth', authRoutes);
 
+// --- Rutas de la Aplicación ---
+app.use('/api/auth', authRoutes);
+app.use('/api/citas', citaRoutes);
+app.use('/api/auditorias', auditoriaRoutes); // ✨ Activación del Endpoint de Auditoría
 
 const PORT = process.env.PORT || 5000;
 
