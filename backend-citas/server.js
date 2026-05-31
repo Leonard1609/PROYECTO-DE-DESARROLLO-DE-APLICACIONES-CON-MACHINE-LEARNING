@@ -11,7 +11,7 @@ app.use('/api/auth', authRoutes);
 // --- Rutas de la Aplicación ---
 app.use('/api/auth', authRoutes);
 app.use('/api/citas', citaRoutes);
-app.use('/api/auditorias', auditoriaRoutes); // ✨ Activación del Endpoint de Auditoría
+app.use('/api/auditoria', auditoriaRoutes); // ✨ Activación del Endpoint de Auditoría
 
 const PORT = process.env.PORT || 5000;
 

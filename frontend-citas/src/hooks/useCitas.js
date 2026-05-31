@@ -18,28 +18,91 @@ export const useCitas = () => {
     cargarCitas();
   }, []);
 
-  const procesarEstado = async (id, nuevoEstado) => {
+  // 🟢 1. PROCESAR ESTADO (ACEPTAR / RECHAZAR) CORREGIDO
+  const procesarEstado = async (idCita, nuevoEstado) => {
     try {
-      const resultado = await citaService.updateStatus(id, nuevoEstado);
-      alert(resultado.mensaje);
-      cargarCitas();
+      const token = localStorage.getItem('token'); 
+
+      const respuesta = await fetch(`http://localhost:5000/api/citas/${idCita}`, {
+        method: 'PUT', 
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '' 
+        },
+        body: JSON.stringify({ 
+          estado: nuevoEstado 
+        })
+      });
+
+      const datos = await respuesta.json();
+
+      if (datos.success) {
+        alert(`¡Cita actualizada con éxito a estado: ${nuevoEstado}!`);
+        
+        // ✨ SOLUCONADO: Si el backend retorna la cita completa actualizada, la usamos.
+        // Si no, fusionamos manteniendo los datos viejos de la fecha/hora intactos.
+        setCitas((citasPrevias) =>
+          citasPrevias.map((cita) =>
+            cita._id === idCita 
+              ? { ...cita, ...(datos.cita || {}), estado: nuevoEstado } 
+              : cita
+          )
+        );
+      } else {
+        alert(datos.mensaje || 'Error al actualizar el estado de la cita.');
+      }
     } catch (error) {
-      alert("Error al procesar el cambio de estado.");
+      console.error('🚨 Error de red en procesarEstado:', error);
+      alert('No se pudo establecer comunicación con el servidor de citas.');
     }
   };
 
-  const procesarReprogramacion = async (id, nuevaFecha, nuevaHora, motivo) => {
+  // 🟠 2. PROCESAR REPROGRAMACIÓN CORREGIDO
+  const procesarReprogramacion = async (idCita, datosReprogramados) => {
     try {
-      const resultado = await citaService.updateStatus(id, 'Reprogramada', {
-        fecha: nuevaFecha,
-        hora: nuevaHora,
-        motivo_reprogramacion: motivo
+      const token = localStorage.getItem('token');
+
+      const respuesta = await fetch(`http://localhost:5000/api/citas/${idCita}`, {
+        method: 'PUT', 
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          ...datosReprogramados, 
+          estado: 'Reprogramada' 
+        })
       });
-      alert(resultado.mensaje);
-      setReprogramandoId(null);
-      cargarCitas();
+
+      const datos = await respuesta.json();
+
+      if (datos.success) {
+        alert('¡Cita reprogramada con éxito en el sistema!');
+        
+        setReprogramandoId(null); 
+
+        // ✨ SOLUCIONADO: Actualizamos el estado local usando los datos nuevos del formulario
+        // garantizando que la nueva fecha y hora se inyecten de inmediato en la tabla.
+        setCitas((citasPrevias) =>
+          citasPrevias.map((cita) =>
+            cita._id === idCita 
+              ? { 
+                  ...cita, 
+                  ...(datos.cita || {}),
+                  estado: 'Reprogramada', 
+                  fecha: datosReprogramados.fecha, 
+                  hora: datosReprogramados.hora,
+                  motivo_reprogramacion: datosReprogramados.motivo_reprogramacion 
+                } 
+              : cita
+          )
+        );
+      } else {
+        alert(datos.mensaje || 'Error al procesar la reprogramación.');
+      }
     } catch (error) {
-      alert("Error al reprogramar la cita.");
+      console.error('🚨 Error de red en procesarReprogramacion:', error);
+      alert('No se pudo comunicar con el servidor.');
     }
   };
 
