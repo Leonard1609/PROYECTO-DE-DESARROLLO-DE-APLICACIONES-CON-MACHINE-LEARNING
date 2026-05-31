@@ -15,14 +15,16 @@ function App() {
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
         <thead>
           <tr style={{ backgroundColor: '#34495e', color: 'white' }}>
-            <th style={{ padding: '12px' }}>Paciente</th>
-            <th style={{ padding: '12px' }}>Correo</th>
-            <th style={{ padding: '12px' }}>Especialidad</th>
-            <th style={{ padding: '12px' }}>Fecha Solicitada</th>
-            <th style={{ padding: '12px' }}>Hora</th>
-            <th style={{ padding: '12px' }}>Estado Actual</th>
-            <th style={{ padding: '12px' }}>Acciones de Secretaría</th>
-          </tr>
+          <th style={{ padding: '12px' }}>Paciente</th>
+          <th style={{ padding: '12px' }}>Correo</th>
+          <th style={{ padding: '12px' }}>Especialidad</th>
+          <th style={{ padding: '12px' }}>Fecha Solicitada</th>
+          <th style={{ padding: '12px' }}>Hora</th>
+          {/* 🤖 Nueva columna de Inteligencia Artificial */}
+          <th style={{ padding: '12px' }}>Alerta de Inasistencia (IA)</th> 
+          <th style={{ padding: '12px' }}>Estado Actual</th>
+          <th style={{ padding: '12px' }}>Acciones de Secretaría</th>
+        </tr>
         </thead>
         <tbody>
           {citas.map(cita => (

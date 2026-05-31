@@ -1,10 +1,33 @@
 const Cita = require('../models/Cita');
 const { enviarCorreoEstado } = require('../config/mailer');
+const { evaluarRiesgoCita } = require('../config/mlEngine'); // ✨ Importamos el motor de ML
+
+const Cita = require('../models/Cita');
+const { enviarCorreoEstado } = require('../config/mailer');
+const { 
+  evaluarRiesgoCita, 
+  predecirProbabilidadReingreso, 
+  estimarCostoAtencion 
+} = require('../config/mlEngine'); // ✨ Importamos los 3 modelos analíticos
 
 exports.crearCita = async (req, res) => {
   try {
-    const nuevaCita = new Cita(req.body);
+    // 🤖 Ejecución en paralelo del set de modelos analíticos
+    const porcentajeRiesgo = evaluarRiesgoCita(req.body.especialidad, req.body.hora);
+    const riesgoReingreso = predecirProbabilidadReingreso(req.body.especialidad);
+    const costoCalculado = estimarCostoAtencion(req.body.especialidad);
+
+    // Adjuntar todo el reporte analítico generado por la IA al objeto antes de guardar
+    const datosConIA = {
+      ...req.body,
+      nivel_riesgo_inasistencia: porcentajeRiesgo,
+      probabilidad_reingreso: riesgoReingreso,
+      costo_estimado: costoCalculado
+    };
+
+    const nuevaCita = new Cita(datosConIA);
     await nuevaCita.save();
+
     res.status(201).json({ 
       success: true, 
       mensaje: 'Notificación: Su cita ha sido enviada para ser verificada.',
@@ -43,11 +66,11 @@ exports.actualizarCita = async (req, res) => {
       detallesCorreo = `Lamentablemente tu cita no pudo ser procesada. Por favor contacta al hospital.`;
     }
 
-    // CÓDIGO CORREGIDO
+    // CÓDIGO CORREGIDO (Mongoose moderno)
     const citaActualizada = await Cita.findByIdAndUpdate(
-    id, 
-    { estado, fecha, hora, motivo_reprogramacion }, 
-    { returnDocument: 'after' } //  Opción moderna recomendada por Mongoose
+      id, 
+      { estado, fecha, hora, motivo_reprogramacion }, 
+      { returnDocument: 'after' } 
     );
 
     if (!citaActualizada) {
