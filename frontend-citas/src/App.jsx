@@ -1,45 +1,35 @@
 import React from 'react';
-import { useCitas } from './hooks/useCitas';
-import { CitaRow } from './components/CitaRow';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+// Importamos las vistas de autenticación premium
+import { Login } from './views/Login';
+import { Register } from './views/Register';
+import { ForgotPassword } from './views/ForgotPassword';
+
+// Importamos las vistas administrativas (Tu tabla original y el Panel de Auditoría)
+import { GestionCitas } from './components/GestionCitas'; 
+import { PanelAuditoria } from './components/PanelAuditoria';
 
 function App() {
-  const { citas, reprogramandoId, setReprogramandoId, procesarEstado, procesarReprogramacion } = useCitas();
-
   return (
-    <div style={{ padding: '30px', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{ color: '#2c3e50', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>
-        🏥 Panel Administrativo - Gestión de Citas Médicas
-      </h1>
-      <p>Bienvenido. Estructura bajo arquitectura limpia frontend.</p>
+    <Router>
+      <Routes>
+        {/* 🔓 RUTAS PÚBLICAS */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-        <thead>
-          <tr style={{ backgroundColor: '#34495e', color: 'white' }}>
-          <th style={{ padding: '12px' }}>Paciente</th>
-          <th style={{ padding: '12px' }}>Correo</th>
-          <th style={{ padding: '12px' }}>Especialidad</th>
-          <th style={{ padding: '12px' }}>Fecha Solicitada</th>
-          <th style={{ padding: '12px' }}>Hora</th>
-          {/* 🤖 Nueva columna de Inteligencia Artificial */}
-          <th style={{ padding: '12px' }}>Alerta de Inasistencia (IA)</th> 
-          <th style={{ padding: '12px' }}>Estado Actual</th>
-          <th style={{ padding: '12px' }}>Acciones de Secretaría</th>
-        </tr>
-        </thead>
-        <tbody>
-          {citas.map(cita => (
-            <CitaRow 
-              key={cita._id} 
-              cita={cita} 
-              reprogramandoId={reprogramandoId}
-              setReprogramandoId={setReprogramandoId}
-              procesarEstado={procesarEstado}
-              procesarReprogramacion={procesarReprogramacion}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
+        {/* 🔒 RUTAS PRIVADAS */}
+        {/* Tu vista original que renderiza CitaRow.jsx ahora vive aquí */}
+        <Route path="/panel-citas" element={<GestionCitas />} />
+        
+        {/* El panel de visualización de bitácoras de auditoría */}
+        <Route path="/auditoria" element={<PanelAuditoria />} />
+
+        {/* 🔄 REDIRECCIÓN POR DEFECTO */}
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    </Router>
   );
 }
 
