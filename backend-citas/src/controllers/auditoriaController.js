@@ -3,29 +3,29 @@ const Auditoria = require('../models/Auditoria');
 
 exports.obtenerHistorialAuditoria = async (req, res) => {
   try {
-    // 🛡️ Doble seguridad: Validar que solo administradores o secretarias accedan
+    // ✨ CORREGIDO: Verificamos de forma limpia si el usuario es Admin o Secretaria.
+    // Si no es ninguno de los dos, se le deniega el acceso.
     if (req.usuario.rol !== 'admin' && req.usuario.rol !== 'secretaria') {
       return res.status(403).json({ 
         success: false, 
-        mensaje: 'Acceso denegado. Permisos insuficientes.' 
+        mensaje: 'Acceso denegado. Se requieren permisos de Administrador.' 
       });
     }
 
-    // Buscamos todas las bitácoras y las ordenamos por fecha (las más nuevas primero)
+    // Buscamos todas las bitácoras en MongoDB Compass ordenadas por la más reciente
     const registros = await Auditoria.find().sort({ createdAt: -1 });
 
-    // Respondemos con éxito enviando el arreglo de logs
+    // Enviamos la respuesta en un formato limpio que React entienda
     return res.json({
       success: true,
       auditorias: registros
     });
 
   } catch (error) {
-    console.error('🚨 Error al obtener auditoría:', error);
+    console.error('🚨 Error en obtenerHistorialAuditoria:', error);
     return res.status(500).json({ 
       success: false, 
-      mensaje: 'Error interno al cargar la bitácora de seguridad.',
-      error: error.message 
+      mensaje: 'Error interno del servidor al procesar la auditoría.' 
     });
   }
 };

@@ -18,29 +18,30 @@ export const Auditoria = () => {
     }
 
     const cargarHistorialAuditoria = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const respuesta = await fetch('http://localhost:5000/api/auditoria', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
-          }
-        });
-        const datos = await respuesta.json();
-        
-        // Asumiendo que el backend retorna un arreglo directo o un objeto con propiedad logs/data
-        if (Array.isArray(datos)) {
-          setLogs(datos);
-        } else if (datos.success && Array.isArray(datos.auditorias)) {
-          setLogs(datos.auditorias);
-        }
-      } catch (error) {
-        console.error('Error al conectar con la API de auditoría:', error);
-      } finally {
-        setCargando(false);
+  try {
+    const token = localStorage.getItem('token');
+    const respuesta = await fetch('http://localhost:5000/api/auditoria', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
       }
-    };
+    });
+
+    const datos = await respuesta.json();
+    
+    // ✨ Sincronización perfecta de la respuesta del backend
+    if (datos.success && Array.isArray(datos.auditorias)) {
+      setLogs(datos.auditorias);
+    } else if (Array.isArray(datos)) {
+      setLogs(datos);
+    }
+  } catch (error) {
+    console.error('Error al conectar con la API de auditoría:', error);
+  } finally {
+    setCargando(false);
+  }
+};
 
     cargarHistorialAuditoria();
   }, [rolUsuario, navigate]);

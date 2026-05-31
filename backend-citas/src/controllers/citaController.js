@@ -1,17 +1,36 @@
 // src/controllers/citaController.js
 const Cita = require('../models/Cita');
 const Auditoria = require('../models/Auditoria');
-// Nota: Si usas una función externa para enviar correos, asegúrate de que esté importada aquí, por ejemplo:
-// const { enviarCorreoEstado } = require('../services/emailService');
+
+// 🧠 IMPORTAMOS TU MOTOR NATIVO MULTI-MODELO DE MACHINE LEARNING
+const { 
+    evaluarRiesgoCita, 
+    predecirProbabilidadReingreso, 
+    estimarCostoAtencion 
+} = require('../config/mlEngine'); 
 
 // 🟢 1. CREAR CITA (Ruta: POST /api/citas)
 exports.crearCita = async (req, res) => {
   try {
-    const nuevaCita = new Cita(req.body);
+    const { especialidad, hora } = req.body;
+
+    // ⚡ Procesamos las variables con los modelos matemáticos de IA antes de guardar
+    const probNoShow = evaluarRiesgoCita(especialidad, hora);
+    const probReingreso = predecirProbabilidadReingreso(especialidad);
+    const costoEstimado = estimarCostoAtencion(especialidad);
+
+    // Creamos la cita adjuntando los resultados del Machine Learning
+    const nuevaCita = new Cita({
+      ...req.body,
+      prob_inasistencia: probNoShow,    // Ajusta según los nombres exactos en tu modelo Cita.js
+      prob_reingreso: probReingreso,
+      costo_estimado: costoEstimado
+    });
+
     const citaGuardada = await nuevaCita.save();
     return res.status(201).json(citaGuardada);
   } catch (error) {
-    console.error('🚨 Error en crearCita:', error);
+    console.error('🚨 Error en crearCita con ML:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -20,9 +39,24 @@ exports.crearCita = async (req, res) => {
 exports.obtenerCitas = async (req, res) => {
   try {
     const citas = await Cita.find().sort({ createdAt: -1 });
-    return res.json(citas);
+
+    // ⚡ MAPEADO EN TIEMPO REAL: Por si las citas antiguas en la Base de Datos no tienen los campos calculados,
+    // garantizamos que al consultar se ejecuten los modelos matemáticos dinámicamente.
+    const citasConMachineLearning = citas.map(cita => {
+      // Convertimos el objeto de Mongoose a JS Puro para poder manipularlo
+      const citaObj = cita.toObject(); 
+
+      // Si los campos no vienen de la base de datos, corremos el motor de IA al vuelo
+      citaObj.prob_inasistencia = citaObj.prob_inasistencia || evaluarRiesgoCita(cita.especialidad, cita.hora);
+      citaObj.prob_reingreso = citaObj.prob_reingreso || predecirProbabilidadReingreso(cita.especialidad);
+      citaObj.costo_estimado = citaObj.costo_estimado || estimarCostoAtencion(cita.especialidad);
+
+      return citaObj;
+    });
+
+    return res.json(citasConMachineLearning);
   } catch (error) {
-    console.error('🚨 Error en obtenerCitas:', error);
+    console.error('🚨 Error en obtenerCitas con ML:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -30,10 +64,9 @@ exports.obtenerCitas = async (req, res) => {
 // 🟡 3. ACTUALIZAR CITA / REPROGRAMAR (Ruta: PUT /api/citas/:id)
 exports.actualizarCita = async (req, res) => {
   const { id } = req.params;
-  const { estado, fecha, hora, motivo_reprogramacion } = req.body;
+  const { estado, fecha, hora, motivo_reprogramacion, especialidad } = req.body;
 
   try {
-    // Validar que el estado haya sido enviado desde el Frontend
     if (!estado) {
       return res.status(400).json({ 
         success: false, 
@@ -41,18 +74,26 @@ exports.actualizarCita = async (req, res) => {
       });
     }
 
-    // Buscar y actualizar la cita en MongoDB
+    // ⚡ Si reprogramaron la hora o cambiaron la especialidad, recalculamos los patrones de riesgo
+    let camposActualizados = { estado, fecha, hora, motivo_reprogramacion };
+    
+    if (hora || especialidad) {
+      camposActualizados.prob_inasistencia = evaluarRiesgoCita(especialidad, hora);
+      camposActualizados.prob_reingreso = predecirProbabilidadReingreso(especialidad);
+      camposActualizados.costo_estimado = estimarCostoAtencion(especialidad);
+    }
+
     const citaActualizada = await Cita.findByIdAndUpdate(
       id,
-      { estado, fecha, hora, motivo_reprogramacion },
-      { new: true } // Esto equivale a returnDocument: 'after' en versiones estables de Mongoose
+      camposActualizados,
+      { new: true }
     );
 
     if (!citaActualizada) {
       return res.status(404).json({ success: false, mensaje: 'Cita no encontrada.' });
     }
 
-    // 🛡️ REGISTRO EN EL PANEL DE AUDITORÍA (Se ejecuta si pasa por el middleware verificarToken)
+    // 🛡️ REGISTRO EN EL PANEL DE AUDITORÍA (Solo para administradores autenticados)
     if (req.usuario) {
       try {
         const nuevaBitacora = new Auditoria({
@@ -60,31 +101,19 @@ exports.actualizarCita = async (req, res) => {
           usuarioNombre: req.usuario.nombre,
           rol: req.usuario.rol,
           accion: `MODIFICAR_ESTADO_${estado.toUpperCase()}`,
-          descripcion: `El usuario modificó la cita del paciente ${citaActualizada.paciente} al estado: ${estado}.`,
+          descripcion: `El administrador modificó la cita del paciente ${citaActualizada.paciente} al estado: ${estado}.`,
           ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1'
         });
         await nuevaBitacora.save();
-        console.log('🛡️ Bitácora de auditoría guardada con éxito.');
       } catch (auditError) {
-        console.error('⚠️ No se pudo guardar la bitácora de auditoría:', auditError.message);
+        console.error('⚠️ Error al registrar auditoría:', auditError.message);
       }
     }
 
-    // 📧 Enviar el correo notificando el nuevo estado (Opcional - Envuelve en un try por seguridad)
-    try {
-      if (typeof enviarCorreoEstado === 'function' && citaActualizada.correo_paciente) {
-        await enviarCorreoEstado(citaActualizada.correo_paciente, citaActualizada.paciente, estado);
-        console.log(`✉️ Correo enviado a ${citaActualizada.correo_paciente}`);
-      }
-    } catch (mailError) {
-      console.error('🚨 Falló el envío de correo:', mailError.message);
-    }
-
-    // Responder con éxito al Frontend
     return res.json({ success: true, cita: citaActualizada });
 
   } catch (error) {
-    console.error('🚨 Error en actualizarCita:', error);
+    console.error('🚨 Error en actualizarCita con ML:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };
