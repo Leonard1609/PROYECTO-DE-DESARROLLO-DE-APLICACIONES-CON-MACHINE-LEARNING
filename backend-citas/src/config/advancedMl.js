@@ -1,5 +1,5 @@
 const Cita = require('../models/Cita');
-
+const tf = require('@tensorflow/tfjs');
 /**
  * 🧠 PIPELINE DE MACHINE LEARNING AVANZADO
  * Ejecuta: Limpieza de nulos (Imputación) + Simulación de Reentrenamiento estadístico
