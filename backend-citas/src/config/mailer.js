@@ -2,9 +2,15 @@ const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail', 
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // Usa SSL/TLS de forma nativa para el puerto 465
   auth: {
     user: process.env.EMAIL_USER, // darkkrisalix616@gmail.com
     pass: process.env.EMAIL_PASS  // bzwxzvccejmcowxd
+  },
+  tls: {
+    rejectUnauthorized: false // 🛡️ EVITA BLOQUEOS LOGÍSTICOS LOCALES: Permite que el servidor local despache correos sin trabas de certificados auto-firmados
   }
 });
 

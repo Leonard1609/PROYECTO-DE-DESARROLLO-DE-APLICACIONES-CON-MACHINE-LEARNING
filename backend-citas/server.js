@@ -1,6 +1,11 @@
 require('dotenv').config();
 const app = require('./src/app');
 const conectarDB = require('./src/config/db');
+const mongoose = require('mongoose'); // ✨ Importación para configurar opciones de Mongoose
+
+// Configuración preventiva global para limpiar las alertas de la consola
+mongoose.set('strictQuery', false);
+
 // En tu server.js añade la importación y el uso de las rutas:
 const authRoutes = require('./src/routes/authRoutes');
 const citaRoutes = require('./src/routes/citaRoutes');

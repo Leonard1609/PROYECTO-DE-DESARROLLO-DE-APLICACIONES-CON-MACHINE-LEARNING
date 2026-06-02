@@ -16,15 +16,15 @@ export const CitaRow = ({ cita, reprogramandoId, setReprogramandoId, procesarEst
         <td style={cellStyle}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px' }}>
             <div>
-              <span style={getRiesgoStyle(cita.nivel_riesgo_inasistencia || 0)}>
-                Inasistencia: {cita.nivel_riesgo_inasistencia || 0}% ({cita.nivel_riesgo_inasistencia >= 70 ? 'Alto' : cita.nivel_riesgo_inasistencia >= 40 ? 'Medio' : 'Bajo'})
+              <span style={getRiesgoStyle(cita.probInasistencia || cita.nivel_riesgo_inasistencia || 0)}>
+                Inasistencia: {cita.probInasistencia || cita.nivel_riesgo_inasistencia || 0}% ({ (cita.probInasistencia || cita.nivel_riesgo_inasistencia || 0) >= 70 ? 'Alto' : (cita.probInasistencia || cita.nivel_riesgo_inasistencia || 0) >= 40 ? 'Medio' : 'Bajo'})
               </span>
             </div>
             <div style={{ color: '#555', paddingLeft: '2px' }}>
-              🔁 Prob. Reingreso: <strong>{cita.probabilidad_reingreso || 0}%</strong>
+              🔁 Prob. Reingreso: <strong>{cita.probReingreso || cita.probabilidad_reingreso || 0}%</strong>
             </div>
             <div style={{ color: '#2c3e50', paddingLeft: '2px' }}>
-              💰 Costo Estimado: <strong>${cita.costo_estimado || 0}</strong>
+              💰 Costo Estimado: <strong>${cita.costoEstimado || cita.costo_estimado || 0}</strong>
             </div>
           </div>
         </td>

@@ -9,22 +9,23 @@ const {
     estimarCostoAtencion 
 } = require('../config/mlEngine'); 
 
+// 📧 IMPORTAMOS LA FUNCIÓN DE CORREO QUE ESTABA HUÉRFANA
+const { enviarCorreoEstado } = require('../config/mailer');
+
 // 🟢 1. CREAR CITA (Ruta: POST /api/citas)
 exports.crearCita = async (req, res) => {
   try {
     const { especialidad, hora } = req.body;
 
-    // ⚡ Procesamos las variables con los modelos matemáticos de IA antes de guardar
     const probNoShow = evaluarRiesgoCita(especialidad, hora);
     const probReingreso = predecirProbabilidadReingreso(especialidad);
     const costoEstimado = estimarCostoAtencion(especialidad);
 
-    // Creamos la cita adjuntando los resultados del Machine Learning
     const nuevaCita = new Cita({
       ...req.body,
-      prob_inasistencia: probNoShow,    // Ajusta según los nombres exactos en tu modelo Cita.js
-      prob_reingreso: probReingreso,
-      costo_estimado: costoEstimado
+      probInasistencia: probNoShow,    
+      probReingreso: probReingreso,    
+      costoEstimado: costoEstimado     
     });
 
     const citaGuardada = await nuevaCita.save();
@@ -40,16 +41,12 @@ exports.obtenerCitas = async (req, res) => {
   try {
     const citas = await Cita.find().sort({ createdAt: -1 });
 
-    // ⚡ MAPEADO EN TIEMPO REAL: Por si las citas antiguas en la Base de Datos no tienen los campos calculados,
-    // garantizamos que al consultar se ejecuten los modelos matemáticos dinámicamente.
     const citasConMachineLearning = citas.map(cita => {
-      // Convertimos el objeto de Mongoose a JS Puro para poder manipularlo
       const citaObj = cita.toObject(); 
 
-      // Si los campos no vienen de la base de datos, corremos el motor de IA al vuelo
-      citaObj.prob_inasistencia = citaObj.prob_inasistencia || evaluarRiesgoCita(cita.especialidad, cita.hora);
-      citaObj.prob_reingreso = citaObj.prob_reingreso || predecirProbabilidadReingreso(cita.especialidad);
-      citaObj.costo_estimado = citaObj.costo_estimado || estimarCostoAtencion(cita.especialidad);
+      citaObj.probInasistencia = citaObj.probInasistencia || citaObj.prob_inasistencia || evaluarRiesgoCita(cita.especialidad, cita.hora);
+      citaObj.probReingreso = citaObj.probReingreso || citaObj.prob_reingreso || predecirProbabilidadReingreso(cita.especialidad);
+      citaObj.costoEstimado = citaObj.costoEstimado || citaObj.costo_estimado || estimarCostoAtencion(cita.especialidad);
 
       return citaObj;
     });
@@ -74,23 +71,45 @@ exports.actualizarCita = async (req, res) => {
       });
     }
 
-    // ⚡ Si reprogramaron la hora o cambiaron la especialidad, recalculamos los patrones de riesgo
     let camposActualizados = { estado, fecha, hora, motivo_reprogramacion };
     
     if (hora || especialidad) {
-      camposActualizados.prob_inasistencia = evaluarRiesgoCita(especialidad, hora);
-      camposActualizados.prob_reingreso = predecirProbabilidadReingreso(especialidad);
-      camposActualizados.costo_estimado = estimarCostoAtencion(especialidad);
+      camposActualizados.probInasistencia = evaluarRiesgoCita(especialidad, hora);
+      camposActualizados.probReingreso = predecirProbabilidadReingreso(especialidad);
+      camposActualizados.costoEstimado = estimarCostoAtencion(especialidad);
     }
 
     const citaActualizada = await Cita.findByIdAndUpdate(
       id,
       camposActualizados,
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!citaActualizada) {
       return res.status(404).json({ success: false, mensaje: 'Cita no encontrada.' });
+    }
+
+    // 🔥 DETONADOR DE CORREOS AUTOMÁTICOS 
+    // Ahora que la cita se actualizó con éxito, disparamos la notificación por email al paciente
+    try {
+      // Dependiendo de tu modelo, extrae el correo (citaActualizada.correo_paciente o correo)
+      const destinoEmail = citaActualizada.correo_paciente || citaActualizada.correo || req.body.correo_paciente;
+      const pacienteNombre = citaActualizada.paciente || "Paciente de EsSalud";
+      
+      // Creamos un texto dinámico con los detalles de control médico
+      let detallesContexto = `Especialidad: ${citaActualizada.especialidad}\nFecha: ${citaActualizada.fecha}\nHora: ${citaActualizada.hora}`;
+      if (motivo_reprogramacion) {
+        detallesContexto += `\nMotivo de cambios: ${motivo_reprogramacion}`;
+      }
+
+      if (destinoEmail && destinoEmail.includes('@')) {
+        console.log(`⏳ Intentando despachar correo automático a: ${destinoEmail}...`);
+        enviarCorreoEstado(destinoEmail, pacienteNombre, estado, detallesContexto);
+      } else {
+        console.log('⚠️ No se envió correo: La cita seleccionada no contiene una dirección de email válida.');
+      }
+    } catch (mailError) {
+      console.error('⚠️ Error logístico al intentar invocar mailer.js:', mailError.message);
     }
 
     // 🛡️ REGISTRO EN EL PANEL DE AUDITORÍA (Solo para administradores autenticados)
