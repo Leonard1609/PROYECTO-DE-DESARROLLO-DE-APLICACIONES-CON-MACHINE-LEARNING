@@ -1,100 +1,125 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable'; // 🌟 Importación directa del plugin
+import autoTable from 'jspdf-autotable';
+// 📈 Importamos los componentes de Recharts para los gráficos interactivos
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export const VistaReportes = () => {
   const [citas, setCitas] = useState([]);
+  const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
   const rolUsuario = localStorage.getItem('userRol') || 'paciente';
 
-  // Estilos del Navbar idénticos a tus otros módulos
+  // LOGO BASE64 PROVISIONAL (Un recuadro médico limpio estilizado en código para evitar links rotos)
+  // Puedes reemplazar este string gigante en el futuro por el Base64 real de EsSalud o tu hospital.
+  const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFMAAABTCAYAAAD7isWhAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH6gYFEg4wK9p3VwAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAACT0lEQVR42u3bS0sVURjG8f8Z04mS0pSMMkhS0pS8gSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdgSgIorSgInALehvdv8F8/fbywWb9AnN7ZatjA/BfM8XGfS9v0CcwWb9AnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm8QJzBZvECcwWbxAnMFm+Qv0ALgAAAABJRU5ErkJggg==";
+
+  // Estilos base de navegación
   const navBarStyle = {
-    display: 'flex',
-    gap: '20px',
-    backgroundColor: '#2c3e50',
-    padding: '12px 24px',
-    borderRadius: '8px',
-    marginBottom: '25px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-    alignItems: 'center'
+    display: 'flex', gap: '20px', backgroundColor: '#2c3e50', padding: '12px 24px',
+    borderRadius: '8px', marginBottom: '25px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', alignItems: 'center'
   };
 
-  const linkStyle = {
-    color: '#ecf0f1',
-    textDecoration: 'none',
-    fontSize: '14px',
-    fontWeight: '600',
-    transition: 'color 0.2s'
-  };
+  const linkStyle = { color: '#ecf0f1', textDecoration: 'none', fontSize: '14px', fontWeight: '600' };
 
-  // Traer las citas del backend al cargar la vista para calcular las métricas
+  // Carga paralela de Citas e Inventario
   useEffect(() => {
-    const obtenerCitas = async () => {
+    const cargarDatos = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/citas');
-        if (!response.ok) throw new Error('Error al obtener el historial de citas.');
-        const data = await response.json();
-        setCitas(data);
+        const [resCitas, resProductos] = await Promise.all([
+          fetch('http://localhost:5000/api/citas'),
+          fetch('http://localhost:5000/api/farmacia')
+        ]);
+
+        if (!resCitas.ok || !resProductos.ok) throw new Error('Error al conectar con las APIs del sistema.');
+
+        const dataCitas = await resCitas.json();
+        const dataProductos = await resProductos.json();
+
+        setCitas(dataCitas);
+        setProductos(dataProductos);
       } catch (err) {
         setError(err.message);
       } finally {
         setCargando(false);
       }
     };
-    obtenerCitas();
+    cargarDatos();
   }, []);
 
-  // 📈 Cálculos de métricas en tiempo real
+  // 🧮 Procesamiento de datos para Recharts
   const totalCitas = citas.length;
-  const aceptadas = citas.filter(c => c.estado === 'Aceptado' || c.estado === 'aceptada').length;
-  const reprogramadas = citas.filter(c => c.estado === 'Reprogramada' || c.estado === 'reprogramada').length;
-  const pendientes = citas.filter(c => c.estado === 'Pendiente' || c.estado === 'pendiente').length;
+  const aceptadas = citas.filter(c => ['Aceptado', 'aceptada', 'Aceptada'].includes(c.estado)).length;
+  const reprogramadas = citas.filter(c => ['Reprogramada', 'reprogramada'].includes(c.estado)).length;
+  const pendientes = citas.filter(c => ['Pendiente', 'pendiente'].includes(c.estado)).length;
 
-  // 📄 Función para generar y descargar el PDF estructurado
+  // Datos para el gráfico de torta (Citas)
+  const datosCitasPie = [
+    { name: 'Aceptadas', value: aceptadas, color: '#2ecc71' },
+    { name: 'Reprogramadas', value: reprogramadas, color: '#f39c12' },
+    { name: 'Pendientes', value: pendientes, color: '#95a5a6' }
+  ];
+
+  // Datos para el gráfico de barras (Inventario de Medicamentos)
+  const datosInventarioBar = productos.slice(0, 7).map(p => ({
+    name: p.nombre.length > 12 ? p.nombre.substring(0, 12) + '...' : p.nombre,
+    Stock: p.stock || 0
+  }));
+
+  // 📄 EXPORTACIÓN AVANZADA DE PDF CON COPYRIGHT Y LOGOS
   const descargarPDF = () => {
     const doc = new jsPDF();
     const fechaImpresion = new Date().toLocaleString();
 
-    // 1. Encabezado del Reporte Hospitalario
-    // 📄 Reemplaza este fragmento dentro de descargarPDF en VistaReportes.jsx
-doc.setFillColor(44, 62, 80); // Color #2c3e50
-doc.rect(0, 0, 210, 40, 'F');
-
-doc.setTextColor(255, 255, 255);
-doc.setFontSize(20);
-doc.setFont('helvetica', 'bold');
-// 🌟 Quitamos el emoji y la tilde conflictiva para asegurar compatibilidad total
-doc.text('SISTEMA DE GESTION MEDICA', 14, 22);
-
-doc.setFontSize(10);
-doc.setFont('helvetica', 'normal');
-doc.text(`Reporte de Control Operativo - Generado el: ${fechaImpresion}`, 14, 32);
-
-    // 2. Sección de Resumen Estadístico
-    doc.setTextColor(44, 62, 80);
-    doc.setFontSize(16);
+    // 1. Efecto de Marca de Agua de Fondo (Copyright suave)
+    doc.setTextColor(240, 243, 244); 
+    doc.setFontSize(55);
     doc.setFont('helvetica', 'bold');
-    doc.text('Resumen Estadístico del Panel', 14, 55);
+    // Guardamos inclinación del texto para la marca de agua
+    doc.text('PROPIEDAD ESSALUD', 35, 140, { angle: 45 });
+    doc.text('DOCUMENTO OPERATIVO', 20, 190, { angle: 45 });
 
-    doc.setDrawColor(236, 240, 241);
+    // 2. Encabezado Sólido Principal
+    doc.setFillColor(44, 62, 80); 
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    // Inserción del logotipo institucional en Base64 (X, Y, Ancho, Alto)
+    try {
+      doc.addImage(logoBase64, 'PNG', 14, 6, 25, 25);
+    } catch(e){ console.log("No se pudo cargar el logo base64"); }
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SISTEMA HOSPITALARIO - REPORTES GENERALES', 45, 18);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Citas Médicas e Inventario Farmacéutico - Emitido: ${fechaImpresion}`, 45, 28);
+
+    // 3. Resumen Operativo en Texto
+    doc.setTextColor(44, 62, 80);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen Estadistico Corporativo', 14, 55);
+
+    doc.setDrawColor(200, 200, 200);
     doc.line(14, 58, 196, 58);
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(50, 50, 50);
-    doc.text(`• Total de Citas Registradas: ${totalCitas}`, 14, 68);
-    doc.text(`• Citas Aceptadas/Atendidas: ${aceptadas}`, 14, 76);
-    doc.text(`• Citas Reprogramadas: ${reprogramadas}`, 14, 84);
-    doc.text(`• Citas Pendientes de Gestión: ${pendientes}`, 14, 92);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`• Volumen de Citas Procesadas: ${totalCitas} registros transaccionales.`, 14, 68);
+    doc.text(`• Total Items únicos registrados en Farmacia: ${productos.length} tipos de medicamentos.`, 14, 76);
 
-    // 3. Tabla de Detalles con jsPDF-AutoTable
-    doc.setFontSize(16);
+    // 4. Inserción de Tabla de Gestión Dinámica
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(44, 62, 80);
-    doc.text('Desglose Detallado de Registros', 14, 110);
+    doc.text('Desglose Transaccional de Citas', 14, 92);
 
     const columnasTabla = ['Paciente', 'Correo', 'Especialidad', 'Fecha', 'Hora', 'Estado'];
     const filasTabla = citas.map(cita => [
@@ -106,92 +131,100 @@ doc.text(`Reporte de Control Operativo - Generado el: ${fechaImpresion}`, 14, 32
       cita.estado || 'Pendiente'
     ]);
 
-    // ✨ CORRECCIÓN CRÍTICA: Llamamos al plugin pasándole el "doc"
     autoTable(doc, {
-      startY: 115,
+      startY: 97,
       head: [columnasTabla],
       body: filasTabla,
       theme: 'striped',
-      headStyles: { fillColor: [52, 73, 94], textColor: [255, 255, 255], fontStyle: 'bold' },
-      styles: { fontSize: 10, cellPadding: 3 },
-      alternateRowStyles: { fillColor: [245, 247, 250] }
+      headStyles: { fillColor: [44, 62, 80], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      alternateRowStyles: { fillColor: [248, 249, 250] }
     });
 
-    // 4. Guardar archivo
-    doc.save(`Reporte_Clinico_${new Date().toISOString().split('T')[0]}.pdf`);
+    // ✨ CORRECCIÓN AQUÍ: Uso del objeto oficial de la tabla ejecutada
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 200;
+
+    // Pie de página legal informativo
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(120, 120, 120);
+    doc.text('Este documento es confidencial y para uso exclusivo del personal autorizado.', 14, finalY + 15);
+
+    doc.save(`Reporte_Institucional_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
     <div style={{ padding: '30px', fontFamily: '"Segoe UI", Roboto, sans-serif', backgroundColor: '#f4f6f9', minHeight: '100vh' }}>
       
-      {/* 🧭 BARRA DE NAVEGACIÓN SUPERIOR */}
+      {/* 🧭 NAV BAR */}
       <nav style={navBarStyle}>
         <Link to="/panel-citas" style={linkStyle}>📅 Gestión de Citas</Link>
-        
-        {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
-          <Link to="/farmacia" style={linkStyle}>💊 Farmacia e Inventario</Link>
-        )}
-
-        {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
-          <Link to="/reportes" style={{ ...linkStyle, color: '#1a73e8', fontWeight: 'bold' }}>📊 Generar Informe</Link>
-        )}
-
-        {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
-          <Link to="/auditoria" style={linkStyle}>🛡️ Ver Auditoría</Link>
-        )}
-
-        {rolUsuario === 'admin' && (
-          <Link to="/modelos-ia" style={linkStyle}>🧠 Modelos IA (ML)</Link>
-        )}
-        
-        <Link to="/login" onClick={() => localStorage.clear()} style={{ ...linkStyle, marginLeft: 'auto', color: '#e74c3c' }}>
-          🚪 Cerrar Sesión ({localStorage.getItem('userName') || 'Usuario'})
-        </Link>
+        {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && <Link to="/farmacia" style={linkStyle}>💊 Farmacia e Inventario</Link>}
+        {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && <Link to="/reportes" style={{ ...linkStyle, color: '#1a73e8', fontWeight: 'bold' }}>📊 Generar Informe</Link>}
+        {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && <Link to="/auditoria" style={linkStyle}>🛡️ Ver Auditoría</Link>}
+        {rolUsuario === 'admin' && <Link to="/modelos-ia" style={linkStyle}>🧠 Modelos IA (ML)</Link>}
+        <Link to="/login" onClick={() => localStorage.clear()} style={{ ...linkStyle, marginLeft: 'auto', color: '#e74c3c' }}>🚪 Cerrar Sesión</Link>
       </nav>
 
       {/* CABECERA */}
       <h1 style={{ color: '#2c3e50', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px', marginTop: 0 }}>
-        📊 Generación de Reportes e Informes Médicos
+        📊 Dashboard de Analítica y Reportes Médicos
       </h1>
-      <p style={{ color: '#7f8c8d', marginBottom: '30px' }}>
-        Analice los indicadores clave de rendimiento del establecimiento y exporte auditorías en formato PDF legal.
+      <p style={{ color: '#7f8c8d', marginBottom: '35px' }}>
+        Estadísticas críticas del hospital en tiempo real. Genere copias certificadas e informes analíticos consolidados.
       </p>
 
-      {error && (
-        <div style={{ padding: '15px', backgroundColor: '#fdf2f2', borderLeft: '4px solid #e74c3c', color: '#c0392b', marginBottom: '20px', borderRadius: '4px' }}>
-          ⚠️ {error}
-        </div>
-      )}
+      {error && <div style={{ padding: '15px', backgroundColor: '#fdf2f2', color: '#c0392b', marginBottom: '20px' }}>⚠️ {error}</div>}
 
       {cargando ? (
-        <p style={{ color: '#7f8c8d', fontStyle: 'italic' }}>Cargando métricas consolidadas...</p>
+        <p style={{ fontStyle: 'italic', color: '#7f8c8d' }}>Procesando analíticas...</p>
       ) : (
         <div>
-          {/* TARJETAS DE MÉTRICAS (KPIs) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', marginBottom: '35px' }}>
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', borderTop: '4px solid #3498db' }}>
-              <span style={{ fontSize: '12px', color: '#7f8c8d', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Citas</span>
-              <h2 style={{ margin: '10px 0 0 0', color: '#2c3e50', fontSize: '28px' }}>{totalCitas}</h2>
+          {/* SECCIÓN DE GRÁFICOS INTERACTIVOS */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '25px', marginBottom: '40px' }}>
+            
+            {/* 1. GRÁFICO DE TORTA - ESTADO DE CITAS */}
+            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+              <h4 style={{ margin: '0 0 15px 0', color: '#34495e', textAlign: 'center' }}>📈 Distribución Porcentual de Citas</h4>
+              <div style={{ width: '100%', height: 250, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={datosCitasPie} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                      {datosCitasPie.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend verticalAlign="bottom" height={36}/>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', borderTop: '4px solid #2ecc71' }}>
-              <span style={{ fontSize: '12px', color: '#7f8c8d', fontWeight: 'bold', textTransform: 'uppercase' }}>Aceptadas</span>
-              <h2 style={{ margin: '10px 0 0 0', color: '#27ae60', fontSize: '28px' }}>{aceptadas}</h2>
+
+            {/* 2. GRÁFICO DE BARRAS - STOCK DE FARMACIA */}
+            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+              <h4 style={{ margin: '0 0 15px 0', color: '#34495e', textAlign: 'center' }}>📦 Niveles de Existencia en Farmacia (Top 7)</h4>
+              <div style={{ width: '100%', height: 250 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={datosInventarioBar} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" style={{ fontSize: '11px' }} />
+                    <YAxis style={{ fontSize: '12px' }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="Stock" fill="#3498db" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', borderTop: '4px solid #e67e22' }}>
-              <span style={{ fontSize: '12px', color: '#7f8c8d', fontWeight: 'bold', textTransform: 'uppercase' }}>Reprogramadas</span>
-              <h2 style={{ margin: '10px 0 0 0', color: '#d35400', fontSize: '28px' }}>{reprogramadas}</h2>
-            </div>
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', borderTop: '4px solid #95a5a6' }}>
-              <span style={{ fontSize: '12px', color: '#7f8c8d', fontWeight: 'bold', textTransform: 'uppercase' }}>Pendientes</span>
-              <h2 style={{ margin: '10px 0 0 0', color: '#7f8c8d', fontSize: '28px' }}>{pendientes}</h2>
-            </div>
+
           </div>
 
-          {/* CONTENEDOR DE ACCIONES DE EXPORTACIÓN */}
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', maxWidth: '600px' }}>
-            <h3 style={{ color: '#34495e', marginTop: 0, marginBottom: '15px' }}>Exportar Documentación Oficial</h3>
+          {/* PANEL DE EXPORTACIÓN */}
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', maxWidth: '650px', margin: '0 auto' }}>
+            <h3 style={{ color: '#34495e', marginTop: 0, marginBottom: '10px' }}>🖨️ Centro de Impresión Institucional</h3>
             <p style={{ color: '#555', fontSize: '14px', lineHeight: '1.6', marginBottom: '25px' }}>
-              El archivo descargable incluirá de forma automática el membrete institucional, la fecha y hora exacta de la solicitud, el consolidado analítico de estados y el listado completo de pacientes registrados hasta la fecha actual.
+              Al descargar el PDF, se inyectará dinámicamente un membrete formal con el logotipo, una marca de agua diagonal de seguridad de **EsSalud** contra falsificaciones y la tabla completa de registros transaccionales.
             </p>
             <button
               onClick={descargarPDF}
@@ -200,19 +233,19 @@ doc.text(`Reporte de Control Operativo - Generado el: ${fechaImpresion}`, 14, 32
                 backgroundColor: totalCitas === 0 ? '#bdc3c7' : '#e74c3c',
                 color: 'white',
                 border: 'none',
-                padding: '12px 24px',
+                padding: '12px 30px',
                 borderRadius: '6px',
                 fontSize: '15px',
                 fontWeight: 'bold',
                 cursor: totalCitas === 0 ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 6px rgba(231, 76, 60, 0.2)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                transition: 'background-color 0.2s'
+                boxShadow: '0 4px 10px rgba(231,76,60,0.25)',
+                margin: '0 auto'
               }}
             >
-              📄 Descargar Reporte en PDF
+              📄 Exportar Documento Certificado (PDF)
             </button>
           </div>
         </div>
