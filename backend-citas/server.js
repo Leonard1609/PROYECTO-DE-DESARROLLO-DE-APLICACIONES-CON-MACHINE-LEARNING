@@ -10,8 +10,33 @@ mongoose.set('strictQuery', false);
 const authRoutes = require('./src/routes/authRoutes');
 const citaRoutes = require('./src/routes/citaRoutes');
 const auditoriaRoutes = require('./src/routes/auditoriaRoutes'); // ✨ Nueva Importación
+const productoController = require('./src/controllers/productoController');
+const reporteController = require('./src/controllers/reporteController');
+const { ejecutarPipelineML } = require('./src/config/advancedMl');
+
 // ... debajo de app.use('/api/citas', citaRoutes);
 app.use('/api/auth', authRoutes);
+
+// 🔒 NUEVOS ENDPOINTS DEL SISTEMA INTEGRADO HOSPITALARIO
+
+// Módulo Farmacia (CRUD)
+app.get('/api/farmacia', productoController.obtenerProductos);
+app.post('/api/farmacia', productoController.crearProducto);
+app.put('/api/farmacia/:id', productoController.actualizarProducto);
+app.delete('/api/farmacia/:id', productoController.eliminarProducto); // Exclusivo Admin en Frontend
+
+// Módulo Reportes
+app.get('/api/reportes/citas', reporteController.generarInformeCitas);
+
+// Módulo Reentrenamiento ML (Exclusivo Administrador)
+app.post('/api/ml/reentrenar', async (req, res) => {
+  try {
+    const resultadoPipeline = await ejecutarPipelineML();
+    res.json(resultadoPipeline);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // --- Rutas de la Aplicación ---
 app.use('/api/auth', authRoutes);

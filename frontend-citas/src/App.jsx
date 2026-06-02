@@ -1,4 +1,3 @@
-// src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
@@ -7,12 +6,16 @@ import { Login } from './views/Login';
 import { Register } from './views/Register';
 import { ForgotPassword } from './views/ForgotPassword';
 
-// 🔒 Importamos las vistas administrativas
+// 🔒 Importamos las vistas administrativas existentes
 import { GestionCitas } from './components/GestionCitas'; 
 
-// 🔥 LA CLAVE: Importamos el componente visual desde views/Auditoria.jsx
-// Usamos "as VistaAuditoria" para que React no se confunda con el archivo .js de la otra carpeta
+// 🔥 Importamos la vista de auditoría
 import { Auditoria as VistaAuditoria } from './views/Auditoria'; 
+
+// 📦 NUEVOS IMPORTS: Vistas de los módulos recién creados
+import { VistaFarmacia } from './views/VistaFarmacia'; 
+import { VistaReportes } from './views/VistaReportes'; 
+import { VistaMachineLearning } from './views/VistaMachineLearning'; // ⚠️ Asegúrate de que este archivo se llame así en src/views/
 
 function App() {
   return (
@@ -26,7 +29,16 @@ function App() {
         {/* 🔒 RUTAS PRIVADAS ADMINISTRATIVAS */}
         <Route path="/panel-citas" element={<GestionCitas />} />
         
-        {/* ✨ CORREGIDO: Usamos el alias limpio para la ruta de auditoría */}
+        {/* 💊 MÓDULO DE FARMACIA E INVENTARIO */}
+        <Route path="/farmacia" element={<VistaFarmacia />} />
+        
+        {/* 📊 MÓDULO DE REPORTES (PDF) */}
+        <Route path="/reportes" element={<VistaReportes />} />
+        
+        {/* 🧠 MÓDULO DE INTELIGENCIA ARTIFICIAL (ML) */}
+        <Route path="/modelos-ia" element={<VistaMachineLearning />} />
+        
+        {/* 🛡️ MÓDULO DE SEGURIDAD Y AUDITORÍA */}
         <Route path="/auditoria" element={<VistaAuditoria />} />
 
         {/* 🔄 REDIRECCIÓN POR DEFECTO */}

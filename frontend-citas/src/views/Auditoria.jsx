@@ -89,14 +89,36 @@ export const Auditoria = () => {
   return (
     <div style={{ padding: '30px', fontFamily: '"Segoe UI", Roboto, sans-serif', backgroundColor: '#f4f6f9', minHeight: '100vh' }}>
       
-      {/* 🧭 BARRA DE NAVEGACIÓN SUPERIOR */}
-      <nav style={navBarStyle}>
-        <Link to="/panel-citas" style={linkStyle}>📅 Gestión de Citas</Link>
-        <Link to="/auditoria" style={{ ...linkStyle, color: '#1a73e8', fontWeight: 'bold' }}>🛡️ Ver Auditoría</Link>
-        <span style={{ ...linkStyle, marginLeft: 'auto', color: '#bdc3c7' }}>
-          👤 {localStorage.getItem('userName')} ({rolUsuario.toUpperCase()})
-        </span>
-      </nav>
+      {/* 🧭 BARRA DE NAVEGACIÓN SUPERIOR CONTROLADA POR ROLES */}
+<nav style={navBarStyle}>
+  {/* Enlace a Citas */}
+  <Link to="/panel-citas" style={linkStyle}>📅 Gestión de Citas</Link>
+  
+  {/* 💊 Farmacia e Inventario (Visible por Secretaría y Admin) */}
+  {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
+    <Link to="/farmacia" style={linkStyle}>💊 Farmacia e Inventario</Link>
+  )}
+
+  {/* 📊 Generar Informe PDF (Visible por Secretaría y Admin) */}
+  {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
+    <Link to="/reportes" style={linkStyle}>📊 Generar Informe</Link>
+  )}
+
+  {/* Enlace activo actual en Auditoría */}
+  {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
+    <Link to="/auditoria" style={{ ...linkStyle, color: '#1a73e8', fontWeight: 'bold' }}>🛡️ Ver Auditoría</Link>
+  )}
+
+  {/* 🧠 Modelos de Machine Learning (¡Exclusivo Administrador!) */}
+  {rolUsuario === 'admin' && (
+    <Link to="/modelos-ia" style={linkStyle}>🧠 Modelos IA (ML)</Link>
+  )}
+  
+  {/* Botón de salida con borrado de localStorage */}
+  <Link to="/login" onClick={() => localStorage.clear()} style={{ ...linkStyle, marginLeft: 'auto', color: '#e74c3c' }}>
+    🚪 Cerrar Sesión ({localStorage.getItem('userName') || 'Usuario'} - {rolUsuario.toUpperCase()})
+  </Link>
+</nav>
 
       <h1 style={{ color: '#2c3e50', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px', marginTop: 0 }}>
         🛡️ Panel de Seguridad y Auditoría del Sistema

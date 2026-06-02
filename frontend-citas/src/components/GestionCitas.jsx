@@ -17,7 +17,8 @@ export const GestionCitas = () => {
     padding: '12px 24px',
     borderRadius: '8px',
     marginBottom: '25px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+    alignItems: 'center'
   };
 
   const linkStyle = {
@@ -36,15 +37,32 @@ export const GestionCitas = () => {
   return (
     <div style={{ padding: '30px', fontFamily: '"Segoe UI", Roboto, sans-serif', backgroundColor: '#f4f6f9', minHeight: '100vh' }}>
       
-      {/* 🧭 BARRA DE NAVEGACIÓN SUPERIOR */}
+      {/* 🧭 BARRA DE NAVEGACIÓN SUPERIOR EXPANDIDA */}
       <nav style={navBarStyle}>
+        {/* Enlace activo de Citas */}
         <Link to="/panel-citas" style={{ ...linkStyle, color: '#1a73e8', fontWeight: 'bold' }}>📅 Gestión de Citas</Link>
         
+        {/* 💊 NUEVO: Enlace para Farmacia e Inventario (Visible por Secretaría y Admin) */}
+        {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
+          <Link to="/farmacia" style={linkStyle}>💊 Farmacia e Inventario</Link>
+        )}
+
+        {/* 📊 NUEVO: Enlace para Generar Reportes PDF (Visible por Secretaría y Admin) */}
+        {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
+          <Link to="/reportes" style={linkStyle}>📊 Generar Informe</Link>
+        )}
+
         {/* Solo el personal administrativo o auditor ve la pestaña del Panel de Auditoría */}
         {(rolUsuario === 'secretaria' || rolUsuario === 'admin') && (
           <Link to="/auditoria" style={linkStyle}>🛡️ Ver Auditoría</Link>
         )}
+
+        {/* 🧠 NUEVO: Enlace para Modelos de Machine Learning (¡Exclusivo Administrador!) */}
+        {rolUsuario === 'admin' && (
+          <Link to="/modelos-ia" style={linkStyle}>🧠 Modelos IA (ML)</Link>
+        )}
         
+        {/* Botón de salida */}
         <Link to="/login" onClick={handleCerrarSesion} style={{ ...linkStyle, marginLeft: 'auto', color: '#e74c3c' }}>
           🚪 Cerrar Sesión ({localStorage.getItem('userName') || 'Usuario'})
         </Link>
@@ -75,19 +93,19 @@ export const GestionCitas = () => {
             {rolUsuario !== 'paciente' && <th style={{ padding: '12px' }}>Acciones de Secretaría</th>}
           </tr>
         </thead>
-    <tbody>
-       {citas.map(cita => (
-           <CitaRow 
-             key={cita._id} 
-             cita={cita} 
-             reprogramandoId={reprogramandoId}
-             setReprogramandoId={setReprogramandoId}
-             procesarEstado={procesarEstado}
-             procesarReprogramacion={procesarReprogramacion}
-             rolUsuario={rolUsuario} // 🌟 Prop que ahora coincide perfectamente con la firma de CitaRow
-            />
-        ))}
-    </tbody>
+        <tbody>
+           {citas.map(cita => (
+               <CitaRow 
+                 key={cita._id} 
+                 cita={cita} 
+                 reprogramandoId={reprogramandoId}
+                 setReprogramandoId={setReprogramandoId}
+                 procesarEstado={procesarEstado}
+                 procesarReprogramacion={procesarReprogramacion}
+                 rolUsuario={rolUsuario} // 🌟 Prop que ahora coincide perfectamente con la firma de CitaRow
+                />
+            ))}
+        </tbody>
       </table>
     </div>
   );
